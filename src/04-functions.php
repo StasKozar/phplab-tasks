@@ -36,8 +36,13 @@ function sayHelloArgument($arg)
 function sayHelloArgumentWrapper($arg)
 {
     // put your code here
+    if (is_int($arg) || is_string($arg) || is_bool($arg)) {
+        return sayHelloArgument($arg);
+    } else {
+        throw new InvalidArgumentException('The wrong argument value.');
+    }
 
-    return sayHelloArgument($arg);
+
 }
 
 /**
@@ -67,7 +72,13 @@ function countArguments()
  * @return array
  * @throws InvalidArgumentException
  */
-function countArgumentsWrapper()
+function countArgumentsWrapper(...$arguments)
 {
-    // put your code here
+   $result = countArguments($arguments);
+   $argumentValues = $result['argument_values'];
+   foreach ($argumentValues[0] as $argumentValue) {
+       if (!is_string($argumentValue)) {
+           throw new InvalidArgumentException("Argument - $argumentValue is not a string");
+       }
+   }
 }
