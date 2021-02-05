@@ -2,6 +2,7 @@
 require_once './functions.php';
 
 $airports = require './airports.php';
+$perPage = 5;
 
 // Filtering
 /**
@@ -53,7 +54,16 @@ $airports = require './airports.php';
         Filter by first letter:
 
         <?php foreach (getUniqueFirstLetters(require './airports.php') as $letter): ?>
-            <a href="#"><?= $letter ?></a>
+            <?php
+                if (!isset($_GET['filter_by_state'])) {
+                    $url = '/?filter_by_first_letter=' . $letter . '&page=1';
+                } else {
+                    $url = '/?filter_by_state=' . $_GET['filter_by_state'] . '&page=' . $_GET['page'] . '&filter_by_first_letter=' . $letter;
+                }
+            ?>
+
+
+            <a href="<?= $url ?>"><?= $letter ?></a>
         <?php endforeach; ?>
 
         <a href="/" class="float-right">Reset all filters</a>
@@ -70,12 +80,25 @@ $airports = require './airports.php';
            /?page=2&filter_by_first_letter=A&sort=name
     -->
     <table class="table">
+        <?php
+        if (empty($_GET)) {
+            $url = '/?sort=';
+        } else {
+            $url = '/?';
+            foreach ($_GET as $parameter => $value) {
+                if ($parameter !== 'sort') {
+                    $url .= $parameter . '=' . $value . '&';
+                }
+            }
+            $url .= 'sort=';
+        }
+        ?>
         <thead>
         <tr>
-            <th scope="col"><a href="#">Name</a></th>
-            <th scope="col"><a href="#">Code</a></th>
-            <th scope="col"><a href="#">State</a></th>
-            <th scope="col"><a href="#">City</a></th>
+            <th scope="col"><a href="<?= $url . 'name' ?>">Name</a></th>
+            <th scope="col"><a href="<?= $url . 'code' ?>">Code</a></th>
+            <th scope="col"><a href="<?= $url . 'state' ?>">State</a></th>
+            <th scope="col"><a href="<?= $url . 'city' ?>">City</a></th>
             <th scope="col">Address</th>
             <th scope="col">Timezone</th>
         </tr>
@@ -91,11 +114,35 @@ $airports = require './airports.php';
              - when you apply filter_by_state, than filter_by_first_letter (see Filtering task #1) is not reset
                i.e. if you have filter_by_first_letter set you can additionally use filter_by_state
         -->
+        <?php
+            $airports = filterAirportsByFirstLetter($airports);
+            $airports = filterAirportsByState($airports);
+            $totalPages = getTotalPages($airports, $perPage);
+            if (isset($_GET['sort'])) {
+                $sortKey = $_GET['sort'];
+                usort($airports, function ($a, $b) use ($sortKey) {
+                    return strcmp($a[$sortKey], $b[$sortKey]);
+                });
+            }
+            $airports = getAirportsForCurrentPage($airports, $perPage);
+
+        ?>
         <?php foreach ($airports as $airport): ?>
+        <?php
+            $firstStateLetter = $airport['state']{0};
+            $firstAirportNameLetter = $airport['name']{0};
+
+            if (!isset($_GET['filter_by_first_letter'])) {
+                $url = '/?filter_by_state=' . $firstStateLetter . '&page=1';
+            } else {
+                $url = '/?filter_by_first_letter=' . $_GET['filter_by_first_letter'] . '&page=' . $_GET['page'] . '&filter_by_state=' . $firstStateLetter;
+            }
+
+            ?>
         <tr>
             <td><?= $airport['name'] ?></td>
             <td><?= $airport['code'] ?></td>
-            <td><a href="#"><?= $airport['state'] ?></a></td>
+            <td><a href="<?= $url ?>"><?= $airport['state'] ?></a></td>
             <td><?= $airport['city'] ?></td>
             <td><?= $airport['address'] ?></td>
             <td><?= $airport['timezone'] ?></td>
@@ -115,9 +162,25 @@ $airports = require './airports.php';
     -->
     <nav aria-label="Navigation">
         <ul class="pagination justify-content-center">
-            <li class="page-item active"><a class="page-link" href="#">1</a></li>
-            <li class="page-item"><a class="page-link" href="#">2</a></li>
-            <li class="page-item"><a class="page-link" href="#">3</a></li>
+            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                <?php
+                    $isActive = 'active';
+                    if (isset($_GET['page'])) {
+                        $isActive = (int)$_GET['page'] === $i ? 'active' : '';
+                        if (isset($_GET['filter_by_state']) && isset($_GET['filter_by_first_letter'])) {
+                            $url = '/?filter_by_state=' . $_GET['filter_by_state']
+                                . '&page=' . $i . '&filter_by_first_letter=' . $_GET['filter_by_first_letter'];
+                        } elseif (isset($_GET['filter_by_state'])) {
+                            $url = '/?filter_by_state=' . $_GET['filter_by_state'] . '&page=' . $i;
+                        } elseif (isset($_GET['filter_by_first_letter'])) {
+                            $url = '/?filter_by_first_letter=' . $_GET['filter_by_first_letter'] . '&page=' . $i;
+                        }
+                    } else {
+                        $url = '/';
+                    }
+                ?>
+            <li class="page-item <?= $isActive ?>"><a class="page-link" href="<?= $url ?>"><?= $i ?></a></li>
+            <?php endfor; ?>
         </ul>
     </nav>
 
