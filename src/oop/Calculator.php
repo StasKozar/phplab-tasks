@@ -126,7 +126,10 @@ class Calculator
      */
     public function undo()
     {
-        // TODO implement undo logic here
+        if (empty($this->intents)) {
+            throw new \Exception('There is no operation in operational stack');
+        }
+        array_pop($this->intents);
 
         return $this;
     }
@@ -138,7 +141,11 @@ class Calculator
      */
     public function replay()
     {
-        // TODO implement replay logic here
+        if (empty($this->intents)) {
+            throw new \Exception('There is no operation to replay in operational stack');
+        }
+        list ($command, $args) = $this->intents[0];
+        $this->intents[] = [$command, $args];
 
         return $this;
     }
