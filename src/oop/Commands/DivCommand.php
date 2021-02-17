@@ -4,7 +4,6 @@ namespace src\oop\Commands;
 
 class DivCommand implements CommandInterface
 {
-
     public function execute(...$args)
     {
         if (2 != sizeof($args)) {

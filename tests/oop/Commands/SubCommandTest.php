@@ -8,33 +8,34 @@ use src\oop\Commands\SubCommand;
 class SubCommandTest extends TestCase
 {
     /**
-     * @param array $args
-     * @param int $expected
+     * @param float $firstArg
+     * @param float $secondArg
+     * @param float $expected
      *
      * @return void
-     * @dataProvider
+     * @dataProvider subCommandDataProvider
      */
-    public function testExecute(array $args, int $expected): void
+    public function testExecute(float $firstArg, float $secondArg, float $expected): void
     {
-        $subCommand = $this->createMock(SubCommand::class);
+        $subCommand = new SubCommand();
 
-        $this->assertEquals($expected, $subCommand->execute($args));
+        $this->assertEquals($expected, $subCommand->execute($firstArg, $secondArg));
     }
 
-    public function subCommandDataProvider()
+    /**
+     * @return array[]
+     */
+    public function subCommandDataProvider(): array
     {
         return [
             [
-                [5, 2],
-                3
+                5, 2, 3,
             ],
             [
-                [10, 5],
-                5
+                10, 5, 5,
             ],
             [
-                [15, 5],
-                10
+                15, 5, 10,
             ],
         ];
     }
