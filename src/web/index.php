@@ -54,16 +54,12 @@ $perPage = 5;
         Filter by first letter:
 
         <?php foreach (getUniqueFirstLetters(require './airports.php') as $letter): ?>
-            <?php
-                if (!isset($_GET['filter_by_state'])) {
-                    $url = '/?filter_by_first_letter=' . $letter . '&page=1';
-                } else {
-                    $url = '/?filter_by_state=' . $_GET['filter_by_state'] . '&page=' . $_GET['page'] . '&filter_by_first_letter=' . $letter;
-                }
-            ?>
+            <?php if (isset($_GET['page'])): ?>
+                <a href="/?<?= http_build_query(array_replace($_GET, ['filter_by_first_letter' => $letter])) ?>"><?= $letter ?></a>
+            <?php else: ?>
+                <a href="/?<?= http_build_query(array_replace($_GET, ['filter_by_first_letter' => $letter], ['page' => 1])) ?>"><?= $letter ?></a>
+            <?php endif; ?>
 
-
-            <a href="<?= $url ?>"><?= $letter ?></a>
         <?php endforeach; ?>
 
         <a href="/" class="float-right">Reset all filters</a>
@@ -80,25 +76,12 @@ $perPage = 5;
            /?page=2&filter_by_first_letter=A&sort=name
     -->
     <table class="table">
-        <?php
-        if (empty($_GET)) {
-            $url = '/?sort=';
-        } else {
-            $url = '/?';
-            foreach ($_GET as $parameter => $value) {
-                if ($parameter !== 'sort') {
-                    $url .= $parameter . '=' . $value . '&';
-                }
-            }
-            $url .= 'sort=';
-        }
-        ?>
         <thead>
         <tr>
-            <th scope="col"><a href="<?= $url . 'name' ?>">Name</a></th>
-            <th scope="col"><a href="<?= $url . 'code' ?>">Code</a></th>
-            <th scope="col"><a href="<?= $url . 'state' ?>">State</a></th>
-            <th scope="col"><a href="<?= $url . 'city' ?>">City</a></th>
+            <th scope="col"><a href="/?<?= http_build_query(array_replace($_GET, ['sort' => 'name'])) ?>">Name</a></th>
+            <th scope="col"><a href="/?<?= http_build_query(array_replace($_GET, ['sort' => 'code'])) ?>">Code</a></th>
+            <th scope="col"><a href="/?<?= http_build_query(array_replace($_GET, ['sort' => 'state'])) ?>">State</a></th>
+            <th scope="col"><a href="/?<?= http_build_query(array_replace($_GET, ['sort' => 'city'])) ?>">City</a></th>
             <th scope="col">Address</th>
             <th scope="col">Timezone</th>
         </tr>
@@ -130,19 +113,15 @@ $perPage = 5;
         <?php foreach ($airports as $airport): ?>
         <?php
             $firstStateLetter = $airport['state']{0};
-            $firstAirportNameLetter = $airport['name']{0};
-
-            if (!isset($_GET['filter_by_first_letter'])) {
-                $url = '/?filter_by_state=' . $firstStateLetter . '&page=1';
-            } else {
-                $url = '/?filter_by_first_letter=' . $_GET['filter_by_first_letter'] . '&page=' . $_GET['page'] . '&filter_by_state=' . $firstStateLetter;
-            }
-
-            ?>
+        ?>
         <tr>
             <td><?= $airport['name'] ?></td>
             <td><?= $airport['code'] ?></td>
-            <td><a href="<?= $url ?>"><?= $airport['state'] ?></a></td>
+            <?php if (isset($_GET['page'])): ?>
+                <td><a href="/?<?= http_build_query(array_replace($_GET, ['filter_by_state' => $firstStateLetter])) ?>"><?= $airport['state'] ?></a></td>
+            <?php else: ?>
+                <td><a href="/?<?= http_build_query(array_replace($_GET, ['filter_by_state' => $firstStateLetter], ['page' => 1])) ?>"><?= $airport['state'] ?></a></td>
+            <?php endif; ?>
             <td><?= $airport['city'] ?></td>
             <td><?= $airport['address'] ?></td>
             <td><?= $airport['timezone'] ?></td>
@@ -167,19 +146,11 @@ $perPage = 5;
                     $isActive = 'active';
                     if (isset($_GET['page'])) {
                         $isActive = (int)$_GET['page'] === $i ? 'active' : '';
-                        if (isset($_GET['filter_by_state']) && isset($_GET['filter_by_first_letter'])) {
-                            $url = '/?filter_by_state=' . $_GET['filter_by_state']
-                                . '&page=' . $i . '&filter_by_first_letter=' . $_GET['filter_by_first_letter'];
-                        } elseif (isset($_GET['filter_by_state'])) {
-                            $url = '/?filter_by_state=' . $_GET['filter_by_state'] . '&page=' . $i;
-                        } elseif (isset($_GET['filter_by_first_letter'])) {
-                            $url = '/?filter_by_first_letter=' . $_GET['filter_by_first_letter'] . '&page=' . $i;
-                        }
-                    } else {
-                        $url = '/';
                     }
                 ?>
-            <li class="page-item <?= $isActive ?>"><a class="page-link" href="<?= $url ?>"><?= $i ?></a></li>
+            <li class="page-item <?= $isActive ?>">
+                <a class="page-link" href="/?<?= http_build_query(array_replace($_GET, ['page' => $i])) ?>"><?= $i ?></a>
+            </li>
             <?php endfor; ?>
         </ul>
     </nav>
