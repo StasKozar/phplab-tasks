@@ -30,6 +30,41 @@ foreach (require_once('../web/airports.php') as $item) {
     }
 
     // TODO States
+    $sth = $pdo->prepare('SELECT id FROM states WHERE name = :name');
+    $sth->setFetchMode(\PDO::FETCH_ASSOC);
+    $sth->execute(['name' => $item['state']]);
+    $state = $sth->fetch();
 
+    if (!$city) {
+        $sth = $pdo->prepare('INSERT INTO states (name) VALUES (:name)');
+        $sth->execute(['name' => $item['state']]);
+
+        // We will use this variable to INSERT airport
+        $stateId = $pdo->lastInsertId();
+    } else {
+        // We will use this variable to INSERT airport
+        $stateId = $state['id'];
+    }
     // TODO Airports
+    $sth = $pdo->prepare('SELECT id FROM airports WHERE name = :name');
+    $sth->setFetchMode(\PDO::FETCH_ASSOC);
+    $sth->execute(['name' => $item['name']]);
+    $airport = $sth->fetch();
+
+    if (!$airport) {
+        $sth = $pdo->prepare(
+            'INSERT INTO airports (name, code, city_id, state_id, address, timezone) 
+                        VALUES (:name, :code, :city_id, :state_id, :address, :timezone)'
+        );
+        $sth->execute(
+            [
+                'name' => $item['name'],
+                'code' => $item['code'],
+                'city_id' => $cityId,
+                'state_id' => $stateId,
+                'address' => $item['address'],
+                'timezone' => $item['timezone']
+            ]
+        );
+    }
 }

@@ -3,12 +3,27 @@
  * Connect to DB
  */
 
+/** @var \PDO $pdo */
+require_once './pdo_ini.php';
 /**
  * SELECT the list of unique first letters using https://www.w3resource.com/mysql/string-functions/mysql-left-function.php
  * and https://www.w3resource.com/sql/select-statement/queries-with-distinct.php
  * and set the result to $uniqueFirstLetters variable
  */
-$uniqueFirstLetters = ['A', 'B', 'C'];
+$sql = <<<'SQL'
+SELECT DISTINCT (FirstLetters) FROM (SELECT name, LEFT(name, 1) AS FirstLetters FROM airports) AS UniqueFirstLetters ORDER BY FirstLetters;
+SQL;
+$uniqueFirstLetters = $pdo->query($sql)->fetchAll();
+$sql = <<<'SQL'
+SELECT airports.name as name,
+       airports.code as code,
+       states.name as state_name,
+       cities.name as city_name,
+       airports.address as address,
+       airports.timezone as timezone
+FROM airports LEFT JOIN states ON airports.state_id = states.id
+        LEFT JOIN cities ON airports.city_id = cities.id
+SQL;
 
 // Filtering
 /**
@@ -20,7 +35,13 @@ $uniqueFirstLetters = ['A', 'B', 'C'];
  * For filtering by state you will need to JOIN states table and check if states.name = A
  * where A - requested filter value
  */
-
+if (isset($_GET['filter_by_first_letter'])) {
+    $sql .= ' WHERE airports.name LIKE \'' . $_GET['filter_by_first_letter'] . '%\'';
+}
+if (isset($_GET['filter_by_state'])) {
+    $connector = isset($_GET['filter_by_first_letter']) ? 'AND' : 'WHERE';
+    $sql .= ' ' . $connector . ' states.name=\'' . $_GET['filter_by_state'] . '\'';
+}
 // Sorting
 /**
  * Here you need to check $_GET request if it has sorting key
@@ -30,7 +51,15 @@ $uniqueFirstLetters = ['A', 'B', 'C'];
  * For sorting use ORDER BY A
  * where A - requested filter value
  */
-
+if (isset($_GET['sort'])) {
+    $sortFields = [
+        'name' => 'airports.name',
+        'code' => 'airports.code',
+        'state' => 'states.name',
+        'city' => 'cities.name',
+    ];
+    $sql .= ' ORDER BY ' . $sortFields[$_GET['sort']];
+}
 // Pagination
 /**
  * Here you need to check $_GET request if it has pagination key
@@ -41,13 +70,25 @@ $uniqueFirstLetters = ['A', 'B', 'C'];
  * To get the number of all airports matched by filter use COUNT(*) in the SELECT statement with all filters applied
  */
 
+if (isset($_GET['page'])) {
+    $perPage = 5;
+    $countSql = $sql . ';';
+    $totalRecords = $pdo->query($countSql)->rowCount();
+    $totalPages = ceil($totalRecords / $perPage);
+    $_GET['page'] = $totalPages < $_GET['page'] ? $totalPages : $_GET['page'];
+    $offset = (int)$_GET['page'] - 1;
+    $sql .= ' LIMIT ' . $perPage . ' OFFSET ' . $offset;
+} else {
+    $totalPages = 1;
+}
 /**
  * Build a SELECT query to DB with all filters / sorting / pagination
  * and set the result to $airports variable
  *
  * For city_name and state_name fields you can use alias https://www.mysqltutorial.org/mysql-alias/
  */
-$airports = [];
+$sql .= ';';
+$airports = $pdo->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
 ?>
 <!doctype html>
 <html lang="en">
@@ -76,9 +117,16 @@ $airports = [];
     -->
     <div class="alert alert-dark">
         Filter by first letter:
-
         <?php foreach ($uniqueFirstLetters as $letter): ?>
-            <a href="#"><?= $letter ?></a>
+            <?php if (isset($_GET['page'])): ?>
+                <a href="/?<?= http_build_query(array_replace($_GET, ['filter_by_first_letter' => $letter['FirstLetters']])) ?>">
+                    <?= $letter['FirstLetters'] ?>
+                </a>
+            <?php else: ?>
+                <a href="/?<?= http_build_query(array_replace($_GET, ['filter_by_first_letter' => $letter['FirstLetters']], ['page' => 1])) ?>">
+                    <?= $letter['FirstLetters'] ?>
+                </a>
+            <?php endif; ?>
         <?php endforeach; ?>
 
         <a href="/" class="float-right">Reset all filters</a>
@@ -97,10 +145,18 @@ $airports = [];
     <table class="table">
         <thead>
         <tr>
-            <th scope="col"><a href="#">Name</a></th>
-            <th scope="col"><a href="#">Code</a></th>
-            <th scope="col"><a href="#">State</a></th>
-            <th scope="col"><a href="#">City</a></th>
+            <th scope="col">
+                <a href="/?<?= http_build_query(array_replace($_GET, ['sort' => 'name'])) ?>">Name</a>
+            </th>
+            <th scope="col">
+                <a href="/?<?= http_build_query(array_replace($_GET, ['sort' => 'code'])) ?>">Code</a>
+            </th>
+            <th scope="col">
+                <a href="/?<?= http_build_query(array_replace($_GET, ['sort' => 'state'])) ?>">State</a>
+            </th>
+            <th scope="col">
+                <a href="/?<?= http_build_query(array_replace($_GET, ['sort' => 'city'])) ?>">City</a>
+            </th>
             <th scope="col">Address</th>
             <th scope="col">Timezone</th>
         </tr>
@@ -120,7 +176,18 @@ $airports = [];
         <tr>
             <td><?= $airport['name'] ?></td>
             <td><?= $airport['code'] ?></td>
-            <td><a href="#"><?= $airport['state_name'] ?></a></td>
+            <td>
+                <?php if (isset($_GET['page'])): ?>
+                    <a href="/?<?= http_build_query(array_replace($_GET, ['filter_by_state' => $airport['state_name']])) ?>">
+                        <?= $airport['state_name'] ?>
+                    </a>
+                <?php else: ?>
+                    <a href="/?<?= http_build_query(array_replace($_GET, ['filter_by_state' => $airport['state_name']], ['page' => 1])) ?>">
+                        <?= $airport['state_name'] ?>
+                    </a>
+                <?php endif; ?>
+
+            </td>
             <td><?= $airport['city_name'] ?></td>
             <td><?= $airport['address'] ?></td>
             <td><?= $airport['timezone'] ?></td>
@@ -140,9 +207,17 @@ $airports = [];
     -->
     <nav aria-label="Navigation">
         <ul class="pagination justify-content-center">
-            <li class="page-item active"><a class="page-link" href="#">1</a></li>
-            <li class="page-item"><a class="page-link" href="#">2</a></li>
-            <li class="page-item"><a class="page-link" href="#">3</a></li>
+            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                <?php
+                $isActive = 'active';
+                if (isset($_GET['page'])) {
+                    $isActive = (int)$_GET['page'] === $i ? 'active' : '';
+                }
+                ?>
+                <li class="page-item <?= $isActive ?>">
+                    <a class="page-link" href="/?<?= http_build_query(array_replace($_GET, ['page' => $i])) ?>"><?= $i ?></a>
+                </li>
+            <?php endfor; ?>
         </ul>
     </nav>
 
